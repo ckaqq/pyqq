@@ -151,6 +151,10 @@ class PyQQ(threading.Thread):
             account = friend_info['result']['account']
             friend['account'] = account
         print 'Get Friends list success!'
+        self.saveFriend()
+        return self.friends
+
+
     
     def get_groupList(self):   
         #Get group list
@@ -162,8 +166,8 @@ class PyQQ(threading.Thread):
         #print hash
         data = 'r=%7B%22vfwebqq%22%3A%22'+self.vfwebqq+'%22%2C%22hash%22%3A%22'+hash+'%22%7D'
         usergroup = self.GetWeb(getGroup,'post', data)
-        self.group = json.loads(usergroup)['result']['gnamelist']
-        for group in self.group:
+        self.groups = json.loads(usergroup)['result']['gnamelist']
+        for group in self.groups:
             print group
             #由群信息获取真实群号
             get_group_num = 'http://s.web2.qq.com/api/get_friend_uin2?' + 'tuin='+str(group['code'])+'&verifysession=&type=4&code=&vfwebqq=' + self.vfwebqq + '&t=1475202994632'
@@ -189,6 +193,9 @@ class PyQQ(threading.Thread):
                     del member['muin']
             group['members'] = members
         print "Get Group info success!"
+        self.saveGroup()
+        return self.groups
+    
 
     def analysisMsg(self, msg, count=0):
         if msg['poll_type'] == 'group_message':
@@ -201,7 +208,7 @@ class PyQQ(threading.Thread):
             except:
                 user_account ='0' 
             flag = 0
-            for gp in self.group:
+            for gp in self.groups:
                 if gp['code'] == gcode:
                     flag = 1
                     gp_name = gp['name']                #real qp name
@@ -294,12 +301,12 @@ class PyQQ(threading.Thread):
         user = {}
         #通过发送到QQ群号的方式发送消息
         if method != 'uin':
-            for gps in self.group:
+            for gps in self.groups:
                 if gps['account'] == gid:
                     user = gps
                     break
         else :
-            for gps in self.group:
+            for gps in self.groups:
                 if gps['gid'] == gid:
                     user = gps
                     break
@@ -368,7 +375,7 @@ class PyQQ(threading.Thread):
         return message
 
     def dealMsg(self, m, msg):
-        if type(m)==type(u''):
+        if type(m)==type(u'') or type(m)==type(''):
             return m
         if type(m)==type([]):
             if m[0]==u'face':
@@ -416,8 +423,8 @@ class PyQQ(threading.Thread):
 
     def run(self) :
         while True:
+            time.sleep(0.2)
             if self.thread_stop:
-                time.sleep(0.2)
                 continue
             try:
                 msgs = self.getMessage()
@@ -433,7 +440,7 @@ class PyQQ(threading.Thread):
                     continue
                 if not os.path.exists("msg"):
                     os.mkdir("msg")
-                post1 = {
+                content = {
                     "gp_account" : gp_account,
                     "gp_name" : gp_name,
                     "user_account" : user_account,
@@ -441,12 +448,7 @@ class PyQQ(threading.Thread):
                     "msgdata" : msg['msgdata'],
                     "time" : datetime.datetime.now()
                 }
-                if gp_account=="0" or msg['msgdata'].find("@Admin")!=-1 :
-                    results = "你刚才说的是：" + msg['msgdata']
-                    if gp_account == "0":
-                        self.sendMessage(user_account, results, "account")
-                    else :
-                        self.sendGroupMessage(gp_account, results, 'gid')
+                self.saveLogs(content)
                 if gp_account!='0':
                     f = open(u'msg/qun'+'-'+gp_account+'.txt','a')
                 else:
@@ -456,10 +458,26 @@ class PyQQ(threading.Thread):
                 f.write(a+'\n'+b+'\n\n')
                 f.close()
 
+    #停止获取消息
     def stop(self):
          self.thread_stop = True
+
+    #重新开始获取消息
     def restart(self):
         self.thread_stop = False
+
+
+    #缓存好友信息，用于子类重写
+    def saveFriend(self) : 
+        return False
+
+    #缓存QQ群，用于子类重写
+    def saveGroup(self) : 
+        return False
+
+    #处理消息并将消息记录下来，用于子类重写
+    def saveLogs(self, content) : 
+        return False
 
 if __name__ == '__main__':
     account = raw_input('Please input QQ account :')
