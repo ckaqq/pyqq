@@ -1,0 +1,4 @@
+*.pyc
+*.bmp
+run.py
+/msg/
