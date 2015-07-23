@@ -1,4 +1,5 @@
 *.pyc
 *.bmp
+*.ipynb
 run.py
 /msg/
