@@ -83,18 +83,13 @@ class PyQQ(threading.Thread):
             print self.verifycode
         parameter =  urllib.urlencode({'a': self.pwd, 'b': uin, 'c': self.verifycode})
         try :
-            print self.encrypyUrl + '?' + parameter
             req=urllib2.Request(self.encrypyUrl + '?' + parameter)
             resp = urllib2.urlopen(req)
             p = resp.read()
         except :
             return 'Please run encrypt.js FIRST!!'
-        
-        #p = encrypt.encrypt(self.pwd, self.uin, self.verifycode)
         #step one:第一次登陆
         loginURL = 'https://ssl.ptlogin2.qq.com/login?u=' + self.uin + '&p=' + p + '&verifycode=' + self.verifycode + '&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=2-10-4498&mibao_css=m_webqq&t=1&g=1&js_type=0&js_ver=10116&login_sig='+ g_login_sig +'&pt_uistyle=5&pt_randsalt=0&pt_vcode_v1=0&pt_verifysession_v1=' + verifysession
-        print loginURL
-        print ''
         login = self.GetWeb(loginURL)
         info = re.compile("'(.*?)'").findall(login)
         print login
@@ -124,9 +119,7 @@ class PyQQ(threading.Thread):
             login2 = self.GetWeb('http://d.web2.qq.com/channel/login2', 'post', data)
         except :
             return "网络异常"
-        #print login2
         dic = eval(login2)
-        # print dic
         self.vfwebqq = dic['result']['vfwebqq']
         self.psessionid = dic['result']['psessionid']
         return 0
@@ -134,12 +127,9 @@ class PyQQ(threading.Thread):
     def get_friendList(self):
         #获取好友列表
         getUserFriend = 'http://s.web2.qq.com/api/get_user_friends2'
-        #hash = encrypt.getHash2(self.uin, self.ptwebqq)
         req = urllib2.Request(self.encrypyUrl + '?b=' + self.uin + '&j=' + self.ptwebqq)
         resp = urllib2.urlopen(req)
         hash = resp.read()
-        #print hash
-        #data = 'r=%7B%22vfwebqq%22%3A%22'+self.vfwebqq+'%22%2C%22hash%22%3A%22'+hash+'%22%7D'
         data = 'r=%7B%22h%22%3A%22hello%22%2C%22hash%22%3A%22' + hash + '%22%2C%22vfwebqq%22%3A%22' + self.vfwebqq + '%22%7D'
         userfriend = self.GetWeb(getUserFriend,'post', data)
         self.friends = json.loads(userfriend)['result']['info']
@@ -157,11 +147,9 @@ class PyQQ(threading.Thread):
     def get_groupList(self):   
         #Get group list
         getGroup = 'http://s.web2.qq.com/api/get_group_name_list_mask2'
-        #hash = encrypt.getHash2(self.uin, self.ptwebqq)
         req = urllib2.Request(self.encrypyUrl + '/?b=' + self.uin + '&j=' + self.ptwebqq)
         resp = urllib2.urlopen(req)
         hash = resp.read()
-        #print hash
         data = 'r=%7B%22vfwebqq%22%3A%22'+self.vfwebqq+'%22%2C%22hash%22%3A%22'+hash+'%22%7D'
         usergroup = self.GetWeb(getGroup,'post', data)
         self.groups = json.loads(usergroup)['result']['gnamelist']
