@@ -43,9 +43,10 @@ class PyQQ(threading.Thread):
     global_uintoQQ_Dict = {}
     global_uintoNick_Dict = {}
     
-    def __init__(self, qqnum = None, pwd = None):
+    def __init__(self, qqnum = None, pwd = None, encrypyUrl = 'http://127.0.0.1:6666/'):
         threading.Thread.__init__(self, name=qqnum)
         self.thread_stop = False
+        self.encrypyUrl = encrypyUrl
         print "Begin!"
         if qqnum and pwd:
             result = self.login(qqnum, pwd)
@@ -82,7 +83,8 @@ class PyQQ(threading.Thread):
             print self.verifycode
         parameter =  urllib.urlencode({'a': self.pwd, 'b': uin, 'c': self.verifycode})
         try :
-            req=urllib2.Request('http://127.0.0.1:6666/?' + parameter)
+            print self.encrypyUrl + '?' + parameter
+            req=urllib2.Request(self.encrypyUrl + '?' + parameter)
             resp = urllib2.urlopen(req)
             p = resp.read()
         except :
@@ -133,7 +135,7 @@ class PyQQ(threading.Thread):
         #获取好友列表
         getUserFriend = 'http://s.web2.qq.com/api/get_user_friends2'
         #hash = encrypt.getHash2(self.uin, self.ptwebqq)
-        req = urllib2.Request('http://127.0.0.1:6666/?b=' + self.uin + '&j=' + self.ptwebqq)
+        req = urllib2.Request(self.encrypyUrl + '?b=' + self.uin + '&j=' + self.ptwebqq)
         resp = urllib2.urlopen(req)
         hash = resp.read()
         #print hash
@@ -156,7 +158,7 @@ class PyQQ(threading.Thread):
         #Get group list
         getGroup = 'http://s.web2.qq.com/api/get_group_name_list_mask2'
         #hash = encrypt.getHash2(self.uin, self.ptwebqq)
-        req = urllib2.Request('http://127.0.0.1:6666/?b=' + self.uin + '&j=' + self.ptwebqq)
+        req = urllib2.Request(self.encrypyUrl + '/?b=' + self.uin + '&j=' + self.ptwebqq)
         resp = urllib2.urlopen(req)
         hash = resp.read()
         #print hash
@@ -188,7 +190,7 @@ class PyQQ(threading.Thread):
                     for card in cards :
                         if card['muin'] == member['uin'] :
                             member['card'] = card['card']
-                                break
+                            break
             except:
                 #超级大群结构不同
                 members = result['ginfo']['members']
