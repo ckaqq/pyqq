@@ -164,7 +164,6 @@ class PyQQ(threading.Thread):
         usergroup = self.GetWeb(getGroup,'post', data)
         self.groups = json.loads(usergroup)['result']['gnamelist']
         for group in self.groups:
-            print group
             #由群信息获取真实群号
             get_group_num = 'http://s.web2.qq.com/api/get_friend_uin2?' + 'tuin='+str(group['code'])+'&verifysession=&type=4&code=&vfwebqq=' + self.vfwebqq + '&t=1475202994632'
             item = self.GetWeb(get_group_num)
@@ -180,6 +179,16 @@ class PyQQ(threading.Thread):
             result = json.loads(group_info)['result']
             try:
                 members = result['minfo']
+                try :
+                    cards = result['cards']
+                except :
+                    cards = []
+                for member in members :
+                    member['card'] = ''
+                    for card in cards :
+                        if card['muin'] == member['uin'] :
+                            member['card'] = card['card']
+                                break
             except:
                 #超级大群结构不同
                 members = result['ginfo']['members']
