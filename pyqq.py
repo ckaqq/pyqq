@@ -43,7 +43,7 @@ class PyQQ(threading.Thread):
     global_uintoQQ_Dict = {}
     global_uintoNick_Dict = {}
     
-    def __init__(self, qqnum = None, pwd = None, encrypyUrl = 'http://127.0.0.1:6666/'):
+    def __init__(self, qqnum = None, pwd = None, encrypyUrl = 'http://127.0.0.1:23333/'):
         threading.Thread.__init__(self, name=qqnum)
         self.thread_stop = False
         self.encrypyUrl = encrypyUrl
@@ -85,7 +85,7 @@ class PyQQ(threading.Thread):
                 if cookie.name == "verifysession" :
                     verifysession = cookie.value
                     break
-        parameter = urllib.urlencode({'a': self.pwd, 'b': uin, 'c': self.verifycode})
+        parameter = urllib.urlencode({'pwd': self.pwd, 'uin': uin, 'vcode': self.verifycode})
         try :
             req = urllib2.Request(self.encrypyUrl + '?' + parameter)
             resp = urllib2.urlopen(req)
@@ -131,7 +131,7 @@ class PyQQ(threading.Thread):
     def get_friendList(self):
         #获取好友列表
         getUserFriend = 'http://s.web2.qq.com/api/get_user_friends2'
-        req = urllib2.Request(self.encrypyUrl + '?b=' + self.uin + '&j=' + self.ptwebqq)
+        req = urllib2.Request(self.encrypyUrl + '?uin=' + self.uin + '&ptwebqq=' + self.ptwebqq)
         resp = urllib2.urlopen(req)
         hash = resp.read()
         data = 'r=%7B%22h%22%3A%22hello%22%2C%22hash%22%3A%22' + hash + '%22%2C%22vfwebqq%22%3A%22' + self.vfwebqq + '%22%7D'
@@ -156,7 +156,10 @@ class PyQQ(threading.Thread):
         hash = resp.read()
         data = 'r=%7B%22vfwebqq%22%3A%22'+self.vfwebqq+'%22%2C%22hash%22%3A%22'+hash+'%22%7D'
         usergroup = self.GetWeb(getGroup,'post', data)
-        self.groups = json.loads(usergroup)['result']['gnamelist']
+        try :
+            self.groups = json.loads(usergroup)['result']['gnamelist']
+        except :
+            return
         for group in self.groups:
             #由群信息获取真实群号
             get_group_num = 'http://s.web2.qq.com/api/get_friend_uin2?' + 'tuin='+str(group['code'])+'&verifysession=&type=4&code=&vfwebqq=' + self.vfwebqq + '&t=1475202994632'
@@ -434,6 +437,7 @@ class PyQQ(threading.Thread):
                 try :
                     gp_account,gp_name,user_account,nick = self.analysisMsg(msg, 0)
                 except:
+                    print msg
                     print "Something Wrong in analysisMsg,try again!"
                     continue
                 if not os.path.exists("msg"):

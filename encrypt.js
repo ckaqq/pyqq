@@ -1,34 +1,33 @@
 var http = require("http");
 var url = require('url');
-var util = require('util');
-http.createServer(function(request, response) { 
-    response.writeHead(200, {"Content-Type": "text/plain"}); 
-    var arr = url.parse(request.url, true)['query'];
-    var a = arr['a'] ? arr['a'] : false;
-    var b = arr['b'] ? arr['b'] : false;
-    var c = arr['c'] ? arr['c'] : false;
-    var j = arr['j'] ? arr['j'] : false;
-    if(j != false) {
-        for (var a = [], i = 0; i < j.length; i++)
-            a[i % 4] ^= j.charCodeAt(i);
-        var w = ["EC", "OK"], d = [];
-        d[0] = b >> 24 & 255 ^ w[0].charCodeAt(0);
-        d[1] = b >> 16 & 255 ^ w[0].charCodeAt(1);
-        d[2] = b >> 8 & 255 ^ w[1].charCodeAt(0);
-        d[3] = b & 255 ^ w[1].charCodeAt(1);
-        w = [];
-        for (i = 0; i < 8; i++)
-            w[i] = i % 2 == 0 ? a[i >> 1] : d[i >> 1];
-        a = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"];
-        d = "";
-        for (i = 0; i < w.length; i++)
-            d += a[w[i] >> 4 & 15], d += a[w[i] & 15];
-        response.end(d);
-    }
-    eval("b='" + b + "'");
+var querystring = require('querystring');
+
+function getHash(b, j)
+{
+    for (var a = [], i = 0; i < j.length; i++)
+        a[i % 4] ^= j.charCodeAt(i);
+    var w = ["EC", "OK"], d = [];
+    d[0] = b >> 24 & 255 ^ w[0].charCodeAt(0);
+    d[1] = b >> 16 & 255 ^ w[0].charCodeAt(1);
+    d[2] = b >> 8 & 255 ^ w[1].charCodeAt(0);
+    d[3] = b & 255 ^ w[1].charCodeAt(1);
+    w = [];
+    for (i = 0; i < 8; i++)
+        w[i] = i % 2 == 0 ? a[i >> 1] : d[i >> 1];
+    a = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"];
+    d = "";
+    for (i = 0; i < w.length; i++)
+        d += a[w[i] >> 4 & 15], d += a[w[i] & 15];
+    return d;
+}
+
+function getP(a, b, c)
+{
+    eval("b='" + b + "';");
     var window = window || {};
     var navigator = navigator || {};
     $ = window.$ || {};
+    r = window || {};
     $.RSA = function() {
         function g(z, t) {
             return new ar(z, t)
@@ -868,7 +867,6 @@ http.createServer(function(request, response) {
         }
         return {rsa_encrypt: S}
     }();
-    r = window || {};
     (function(r) {
         var s = "", a = 0, g = [], x = [], y = 0, u = 0, m = [], t = [], n = true;
         function e() {
@@ -1413,7 +1411,7 @@ http.createServer(function(request, response) {
     function __monitor(mid, probability) {
         if (Math.random() > (probability || 1)) {
             return
-        }	
+        }   
     }
     function getEncryption(password, salt, vcode, isMd5) {
         vcode = vcode || "";
@@ -1445,9 +1443,26 @@ http.createServer(function(request, response) {
         var str3 = $.RSA.rsa_encrypt(str2);
         return str3
     }
-    if(!a || !b || !c)
-     response.end("Error");
- else
-     response.end(getEncryption(a,b,c,false));
-}).listen(6666); 
-console.log("nodejs start listen 6666 port!");
+    return getEncryption(a, b, c, false);
+}
+
+http.createServer(function(req, res) {
+    var get = querystring.parse(url.parse(req.url).query);
+    var uin = get['uin']? get['uin'] : false;
+    var pwd = get['pwd']? get['pwd'] : false;
+    var vcode = get['vcode']? get['vcode'] : false;
+    var ptwebqq = get['ptwebqq']? get['ptwebqq'] : false;
+    if (uin && ptwebqq) {
+        result = getHash(uin, ptwebqq);
+    } else if (pwd && uin && vcode) {
+        result = getP(pwd, uin, vcode);
+    } else {
+        result = "Error";
+    }
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.end(result);
+
+}).listen(23333); 
+console.log("nodejs start listen 23333 port!");
+
+
