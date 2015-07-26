@@ -59,7 +59,6 @@ class PyQQ(threading.Thread):
     def login(self, qqnum, pwd):
         if type(qqnum) == type(0):
             qqnum = str(qqnum)
-
         req=urllib2.Request('https://ui.ptlogin2.qq.com/cgi-bin/login?daid=164&target=self&style=5&mibao_css=m_webqq&appid=1003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerroralert&strong_login=1&login_state=10&t=20150211001')
         resp = urllib2.urlopen(req)
         html = resp.read()
@@ -74,36 +73,39 @@ class PyQQ(threading.Thread):
         verifysession = arr[3]
         self.uin = qqnum
         self.pwd = pwd
+        #需要验证码
         if state == '1':
-            gif = self.GetWeb('http://captcha.qq.com/getimage?aid=1003903&r=0.45623475915069394&uin=' + self.uin)
+            url = 'https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.5486779811326414&uin=' + self.uin + '&cap_cd=' + self.verifycode
+            gif = self.GetWeb(url)
             file = open(os.getcwd()+'/qq' + qqnum +'code.bmp','w+b')
             file.write(gif)
             file.close()
             self.verifycode = raw_input('[' + qqnum + "] Please inpit the verifycode:")
-            print self.verifycode
-        parameter =  urllib.urlencode({'a': self.pwd, 'b': uin, 'c': self.verifycode})
+            for cookie in self.cj :
+                if cookie.name == "verifysession" :
+                    verifysession = cookie.value
+                    break
+        parameter = urllib.urlencode({'a': self.pwd, 'b': uin, 'c': self.verifycode})
         try :
-            req=urllib2.Request(self.encrypyUrl + '?' + parameter)
+            req = urllib2.Request(self.encrypyUrl + '?' + parameter)
             resp = urllib2.urlopen(req)
             p = resp.read()
         except :
             return 'Please run encrypt.js FIRST!!'
+
         #step one:第一次登陆
         loginURL = 'https://ssl.ptlogin2.qq.com/login?u=' + self.uin + '&p=' + p + '&verifycode=' + self.verifycode + '&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=2-10-4498&mibao_css=m_webqq&t=1&g=1&js_type=0&js_ver=10116&login_sig='+ g_login_sig +'&pt_uistyle=5&pt_randsalt=0&pt_vcode_v1=0&pt_verifysession_v1=' + verifysession
+
         login = self.GetWeb(loginURL)
         info = re.compile("'(.*?)'").findall(login)
-        print login
         print 'User:[(' + self.uin + ')]'
-        #成功是返回0
         if info[0] != '0':
             return "登陆失败"
         #回调地址
         loginURLback = info[2]
         #step two:访问回调地址更新cookie
         info = self.GetWeb(loginURLback)
-        #print info
         for cookie in self.cj:
-            #print cookie.name,cookie.value
             if cookie.name == 'ptwebqq':
                 self.ptwebqq = cookie.value
                 break
@@ -118,6 +120,8 @@ class PyQQ(threading.Thread):
         try :
             login2 = self.GetWeb('http://d.web2.qq.com/channel/login2', 'post', data)
         except :
+            login2 = ''
+        if login2 == '' :
             return "网络异常"
         dic = eval(login2)
         self.vfwebqq = dic['result']['vfwebqq']
@@ -427,20 +431,24 @@ class PyQQ(threading.Thread):
             if msgs == []:
                 continue
             for msg in msgs:
-                try:
+                try :
                     gp_account,gp_name,user_account,nick = self.analysisMsg(msg, 0)
                 except:
                     print "Something Wrong in analysisMsg,try again!"
                     continue
                 if not os.path.exists("msg"):
                     os.mkdir("msg")
+                try :
+                    msgdata = msg['msgdata']
+                except :
+                    msgdata = ''
                 content = {
                     "gp_account" : gp_account,
                     "gp_name" : gp_name,
                     "user_account" : user_account,
                     "nick" : nick,
-                    "msgdata" : msg['msgdata'],
-                    "time" : datetime.datetime.now()
+                    "msgdata" : msgdata,
+                    "time" : datetime.datetime.now(),
                 }
                 self.saveLogs(content)
                 if gp_account!='0':
