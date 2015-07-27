@@ -48,6 +48,8 @@ class PyQQ(threading.Thread):
         self.thread_stop = False
         self.encrypyUrl = encrypyUrl
         print "Begin!"
+        if not os.path.exists("msg"):
+            os.mkdir("msg")
         if qqnum and pwd:
             result = self.login(qqnum, pwd)
             if result == 0 :
@@ -59,9 +61,8 @@ class PyQQ(threading.Thread):
     def login(self, qqnum, pwd):
         if type(qqnum) == type(0):
             qqnum = str(qqnum)
-        req=urllib2.Request('https://ui.ptlogin2.qq.com/cgi-bin/login?daid=164&target=self&style=5&mibao_css=m_webqq&appid=1003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerroralert&strong_login=1&login_state=10&t=20150211001')
-        resp = urllib2.urlopen(req)
-        html = resp.read()
+        url = 'https://ui.ptlogin2.qq.com/cgi-bin/login?daid=164&target=self&style=5&mibao_css=m_webqq&appid=1003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerroralert&strong_login=1&login_state=10&t=20150211001'
+        html = self.GetWeb(url, hasHeader = False)
         g_login_sig = re.compile("g_login_sig=encodeURIComponent\\(\"(.*?)\"\\);").findall(html)[0]
         web = self.GetWeb('https://ssl.ptlogin2.qq.com/check?pt_tea=1&uin=' + qqnum + '&appid=1003903&js_ver=10116&js_type=0&login_sig=' + g_login_sig + '&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html&r=0.27641687798313797')
         if web=='':
@@ -87,9 +88,8 @@ class PyQQ(threading.Thread):
                     break
         parameter = urllib.urlencode({'pwd': self.pwd, 'uin': uin, 'vcode': self.verifycode})
         try :
-            req = urllib2.Request(self.encrypyUrl + '?' + parameter)
-            resp = urllib2.urlopen(req)
-            p = resp.read()
+            url = self.encrypyUrl + '?' + parameter
+            p = self.GetWeb(url, hasHeader = False)
         except :
             return 'Please run encrypt.js FIRST!!'
 
@@ -127,13 +127,12 @@ class PyQQ(threading.Thread):
         self.vfwebqq = dic['result']['vfwebqq']
         self.psessionid = dic['result']['psessionid']
         return 0
-    
+
+    #获取好友列表
     def get_friendList(self):
-        #获取好友列表
+        url = self.encrypyUrl + '?uin=' + self.uin + '&ptwebqq=' + self.ptwebqq
+        hash = self.GetWeb(url, hasHeader = False)
         getUserFriend = 'http://s.web2.qq.com/api/get_user_friends2'
-        req = urllib2.Request(self.encrypyUrl + '?uin=' + self.uin + '&ptwebqq=' + self.ptwebqq)
-        resp = urllib2.urlopen(req)
-        hash = resp.read()
         data = 'r=%7B%22h%22%3A%22hello%22%2C%22hash%22%3A%22' + hash + '%22%2C%22vfwebqq%22%3A%22' + self.vfwebqq + '%22%7D'
         userfriend = self.GetWeb(getUserFriend,'post', data)
         self.friends = json.loads(userfriend)['result']['info']
@@ -148,17 +147,20 @@ class PyQQ(threading.Thread):
         self.saveFriend()
         print 'Get Friends list success!'
 
-    def get_groupList(self):   
-        #Get group list
+    #缓存好友信息，用于子类重写
+    def saveFriend(self) : 
+        return False
+
+    def get_groupList(self):
+        url = self.encrypyUrl + '/?uin=' + self.uin + '&ptwebqq=' + self.ptwebqq
+        hash = self.GetWeb(url, hasHeader = False)
         getGroup = 'http://s.web2.qq.com/api/get_group_name_list_mask2'
-        req = urllib2.Request(self.encrypyUrl + '/?b=' + self.uin + '&j=' + self.ptwebqq)
-        resp = urllib2.urlopen(req)
-        hash = resp.read()
-        data = 'r=%7B%22vfwebqq%22%3A%22'+self.vfwebqq+'%22%2C%22hash%22%3A%22'+hash+'%22%7D'
-        usergroup = self.GetWeb(getGroup,'post', data)
+        data = 'r=%7B%22vfwebqq%22%3A%22' + self.vfwebqq + '%22%2C%22hash%22%3A%22' + hash + '%22%7D'
+        usergroup = self.GetWeb(getGroup, 'post', data)
         try :
             self.groups = json.loads(usergroup)['result']['gnamelist']
         except :
+            print "get group list error"
             return
         for group in self.groups:
             #由群信息获取真实群号
@@ -197,6 +199,10 @@ class PyQQ(threading.Thread):
         print "Get Group info success!"
         self.saveGroup()
         return self.groups
+
+    #缓存QQ群，用于子类重写
+    def saveGroup(self) : 
+        return False
 
     def analysisMsg(self, msg, count=0):
         if msg['poll_type'] == 'group_message':
@@ -253,7 +259,6 @@ class PyQQ(threading.Thread):
                 uin_get_account = 'http://s.web2.qq.com/api/get_friend_uin2?tuin='+str(uin)+'&type=1&vfwebqq='+self.vfwebqq+'&t=1405872226955'
                 account = json.loads(self.GetWeb(uin_get_account))['result']['account']
                 member['account'] = str(account)
-                #print "Group members:"+str(account)+' '+member['nick']
                 return str(account), member['nick']
     # webQQ发送时不稳定不可靠的
     # 消息发送不出去的常见原因：
@@ -363,7 +368,7 @@ class PyQQ(threading.Thread):
                 elif msg['poll_type'] == u"system_message":
                     rollURL = "http://s.web2.qq.com/api/allow_and_add2"
                     data = "r=%7b%22account%22%3a" + str(msg["value"]["account"]) + "%2c%22gid%22%3a0%2c%22mname%22%3a%22%22%2c%22vfwebqq%22%3a%22"+self.vfwebqq+"%22%7d"
-                    roll = self.GetWeb(rollURL,'post', data)
+                    roll = self.GetWeb(rollURL, 'post', data)
                     print "add friend : " + str(msg["value"]["account"])
                 elif msg['poll_type'] == u"buddylist_change":
                     self.get_friendList()
@@ -404,11 +409,16 @@ class PyQQ(threading.Thread):
         global new_location
         return new_location
 
-    def GetWeb(self, url, method = 'get', values = ''):
+    #获取网页
+    def GetWeb(self, url, method = 'get', values = '', hasHeader = True):
+        if hasHeader == True :
+            header = self.ExploereHEADERS
+        else :
+            header = {}
         if method == 'get':
-            req = urllib2.Request(url, headers = self.ExploereHEADERS)
+            req = urllib2.Request(url, headers = header)
         else:
-            req = urllib2.Request(url,values,headers = self.ExploereHEADERS)
+            req = urllib2.Request(url,values,headers = header)
         try:
             response = urllib2.urlopen(req)
             the_page = response.read()
@@ -417,6 +427,7 @@ class PyQQ(threading.Thread):
             the_page=''
         return the_page
 
+    #获取当前时间
     def getTime(self):
         now = time.localtime(time.time())
         s   = time.strftime('%Y-%m-%d %H:%M:%S',now)
@@ -430,8 +441,6 @@ class PyQQ(threading.Thread):
             try:
                 msgs = self.getMessage()
             except:
-                msgs = []
-            if msgs == []:
                 continue
             for msg in msgs:
                 try :
@@ -440,8 +449,6 @@ class PyQQ(threading.Thread):
                     print msg
                     print "Something Wrong in analysisMsg,try again!"
                     continue
-                if not os.path.exists("msg"):
-                    os.mkdir("msg")
                 try :
                     msgdata = msg['msgdata']
                 except :
@@ -464,6 +471,10 @@ class PyQQ(threading.Thread):
                 f.write(a+'\n'+b+'\n\n')
                 f.close()
 
+    #处理消息并将消息记录下来，用于子类重写
+    def saveLogs(self, content) : 
+        return False
+
     #停止获取消息
     def stop(self):
          self.thread_stop = True
@@ -473,17 +484,9 @@ class PyQQ(threading.Thread):
         self.thread_stop = False
 
 
-    #缓存好友信息，用于子类重写
-    def saveFriend(self) : 
-        return False
 
-    #缓存QQ群，用于子类重写
-    def saveGroup(self) : 
-        return False
 
-    #处理消息并将消息记录下来，用于子类重写
-    def saveLogs(self, content) : 
-        return False
+
 
 if __name__ == '__main__':
     account = raw_input('Please input QQ account :')
